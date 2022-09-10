@@ -5,7 +5,7 @@ import re
 # Reading api list
 with open("map_api.txt", "r") as map_api_file:
     api_list = []
-    for line in map_api_file.readlines():
+    for line in map_api_file:
         name, address = line.split()
         api_list.append((name, address))
 
@@ -25,12 +25,9 @@ for (name, message) in points_messages:
     label_list = message["data"]["label_list"]
     point_list = message["data"]["point_list"]
 
-    label_map = {}
-    for label in label_list:
-        label_map[label["id"]] = label
-
+    label_map = {label["id"]: label for label in label_list}
     data = {}
-    
+
     for point in point_list:
         label_id = point["label_id"]
         if label_id not in data:
@@ -50,7 +47,7 @@ for (name, message) in points_messages:
             "y_pos": point["y_pos"]
         })
         data[label_id]["points"] = sorted(points, key=lambda x: x["id"])
-    
+
 
     refactored_data[name] = {
         "labels": dict(sorted(data.items())) # Sorting it so we can easily track changes in updates
@@ -70,16 +67,17 @@ for (name, address) in api_list:
 for (name, message) in categories_messages:
     categories_list = message["data"]["tree"]
 
-    data = []
-    for category in categories_list:
-        data.append(
-            {
-                "id": category["id"],
-                "name": category["name"],
-                "children": sorted([child["id"] for child in category["children"]])
-            }
-        )
-    
+    data = [
+        {
+            "id": category["id"],
+            "name": category["name"],
+            "children": sorted(
+                [child["id"] for child in category["children"]]
+            ),
+        }
+        for category in categories_list
+    ]
+
     refactored_data[name]["categories"] = sorted(data, key=lambda x: x["id"])
 
 # Get ascension materials data
@@ -90,7 +88,7 @@ weapon_types = {"1":"Swords", "10":"Catalysts", "11":"Claymores", "12":"Bows", "
 ascension_materials_messages = []
 r = requests.get(api_list[0][1].replace("point/list", "game_item"))
 if r.status_code != 200:
-    print(f"Failed load ascension materials data")
+    print("Failed load ascension materials data")
 else:
     ascension_materials_messages.append(("ascension_materials", json.loads(r.content.decode())))
 
@@ -118,11 +116,12 @@ for (name, message) in ascension_materials_messages:
 
         data = []
         for category in material_category_list:
-            children = []
-            for material in material_list:
-                if category == str(material["attr"]):
-                    children.append(material["item_id"])
-                    
+            children = [
+                material["item_id"]
+                for material in material_list
+                if category == str(material["attr"])
+            ]
+
             data.append(
                 {
                 "id": category,
@@ -131,7 +130,7 @@ for (name, message) in ascension_materials_messages:
                 "icon": material_category_list[category]["icon_chosen"]
                 }
             )
-        material_data[type + "_types"] = sorted(data, key=lambda x: x["id"])
+        material_data[f"{type}_types"] = sorted(data, key=lambda x: x["id"])
 
     refactored_data[name] = {
         "character": material_data["avatar"],
